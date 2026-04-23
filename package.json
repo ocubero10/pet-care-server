@@ -1,0 +1,49 @@
+{
+  "name": "pet-care-server",
+  "version": "1.0.0",
+  "description": "Pet Care Pro - Backend API Server",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "ts-node -P tsconfig.json -r tsconfig-paths/register src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "start:prod": "npm run build && npm start",
+    "lint": "eslint src/ --ext .ts",
+    "lint:fix": "eslint src/ --ext .ts --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "seed": "ts-node -P tsconfig.json src/seed.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "pet-care",
+    "grooming",
+    "api",
+    "express",
+    "mongodb",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.5.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.6.0",
+    "eslint": "^10.2.1",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.8.3",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^6.0.3"
+  }
+}
