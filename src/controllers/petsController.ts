@@ -6,13 +6,22 @@ import { NotFoundError, ValidationError, ForbiddenError, AuthError } from '../ut
 export const getPets = async (req: AuthRequest, res: Response): Promise<void> => {
   if (!req.user) throw new AuthError('User not authenticated');
 
-  const ownerId = (req.query.ownerId as string) || req.user.id;
-  const pets = await Pet.find({ ownerId, isActive: true });
+  const filter: Record<string, unknown> = { isActive: true };
+  const requestedOwnerId = req.query.ownerId as string | undefined;
 
-  res.json({
-    success: true,
-    data: pets,
-  });
+  if (req.user.role === 'staff') {
+    // Staff sees all pets, optionally filtered to a specific client
+    if (requestedOwnerId) filter.ownerId = requestedOwnerId;
+  } else {
+    // Owners only see their own; ownerId query param is ignored for them
+    filter.ownerId = req.user.id;
+  }
+
+  const pets = await Pet.find(filter)
+    .populate('ownerId', 'name email phone cedula')
+    .sort({ createdAt: -1 });
+
+  res.json({ success: true, data: pets });
 };
 
 export const getPetById = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -39,18 +48,41 @@ export const getPetById = async (req: AuthRequest, res: Response): Promise<void>
 export const createPet = async (req: AuthRequest, res: Response): Promise<void> => {
   if (!req.user) throw new AuthError('User not authenticated');
 
-  const { name, breed, age, size, specialNotes, profileImage } = req.body;
-
-  if (!name || !breed || age === undefined || !size) {
-    throw new ValidationError('Name, breed, age, and size are required');
-  }
-
-  const pet = new Pet({
-    ownerId: req.user.id,
+  const {
     name,
     breed,
     age,
     size,
+    sex,
+    weight,
+    coatColor,
+    allergies,
+    vaccines,
+    specialNotes,
+    profileImage,
+    ownerId: bodyOwnerId,
+  } = req.body;
+
+  if (!name || !breed || age === undefined || !sex || weight === undefined || !coatColor) {
+    throw new ValidationError(
+      'Name, breed, age, sex, weight, and coat color are required'
+    );
+  }
+
+  // Staff can create pets for any owner; otherwise the requester is the owner.
+  const ownerId = req.user.role === 'staff' && bodyOwnerId ? bodyOwnerId : req.user.id;
+
+  const pet = new Pet({
+    ownerId,
+    name,
+    breed,
+    age,
+    size,
+    sex,
+    weight,
+    coatColor,
+    allergies,
+    vaccines,
     specialNotes,
     profileImage,
   });
@@ -68,7 +100,19 @@ export const updatePet = async (req: AuthRequest, res: Response): Promise<void> 
   if (!req.user) throw new AuthError('User not authenticated');
 
   const { id } = req.params;
-  const { name, breed, age, size, specialNotes, profileImage } = req.body;
+  const {
+    name,
+    breed,
+    age,
+    size,
+    sex,
+    weight,
+    coatColor,
+    allergies,
+    vaccines,
+    specialNotes,
+    profileImage,
+  } = req.body;
 
   const pet = await Pet.findById(id);
   if (!pet) {
@@ -76,13 +120,13 @@ export const updatePet = async (req: AuthRequest, res: Response): Promise<void> 
   }
 
   // Check authorization
-  if (pet.ownerId.toString() !== req.user.id) {
+  if (pet.ownerId.toString() !== req.user.id && req.user.role !== 'staff') {
     throw new ForbiddenError('You cannot update this pet');
   }
 
   const updatedPet = await Pet.findByIdAndUpdate(
     id,
-    { name, breed, age, size, specialNotes, profileImage },
+    { name, breed, age, size, sex, weight, coatColor, allergies, vaccines, specialNotes, profileImage },
     { new: true, runValidators: true }
   );
 

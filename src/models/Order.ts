@@ -1,6 +1,15 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export type ServiceType = 'grooming' | 'haircut' | 'nails' | 'bath' | 'other';
+export type ServiceType =
+  | 'bath'
+  | 'breed_cut'
+  | 'nails'
+  | 'ear_cleaning'
+  | 'de_shedding'
+  | 'hygienic_cut'
+  | 'grooming'
+  | 'haircut'
+  | 'other';
 export type OrderStatus =
   | 'pending'
   | 'confirmed'
@@ -32,6 +41,7 @@ export interface IOrder extends Document {
   actualCompletionTime?: Date;
   driverId?: mongoose.Types.ObjectId;
   staffId?: mongoose.Types.ObjectId;
+  coatCondition?: string;
   notes?: string;
   images?: string[];
   clarificationRequests?: Array<{
@@ -60,7 +70,17 @@ const orderSchema = new Schema<IOrder>(
     services: [
       {
         type: String,
-        enum: ['grooming', 'haircut', 'nails', 'bath', 'other'],
+        enum: [
+          'bath',
+          'breed_cut',
+          'nails',
+          'ear_cleaning',
+          'de_shedding',
+          'hygienic_cut',
+          'grooming',
+          'haircut',
+          'other',
+        ],
         required: true,
       },
     ],
@@ -101,6 +121,10 @@ const orderSchema = new Schema<IOrder>(
     staffId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
+      default: null,
+    },
+    coatCondition: {
+      type: String,
       default: null,
     },
     notes: {

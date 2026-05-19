@@ -7,7 +7,7 @@ const router: Router = express.Router();
 router.use(authenticate);
 
 router.get('/', ordersController.getOrders);
-router.post('/', authorize('owner'), ordersController.createOrder);
+router.post('/', authorize('owner', 'staff'), ordersController.createOrder);
 router.get('/:id', ordersController.getOrderById);
 router.put('/:id', ordersController.updateOrder);
 router.patch('/:id/status', ordersController.updateOrderStatus);

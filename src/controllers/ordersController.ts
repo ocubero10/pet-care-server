@@ -15,8 +15,12 @@ export const getOrders = async (req: AuthRequest, res: Response): Promise<void> 
     query.ownerId = req.user.id;
   } else if (req.user.role === 'driver') {
     query.driverId = req.user.id;
-  } else if (req.user.role === 'staff') {
-    query.staffId = req.user.id;
+  }
+  // Staff sees all orders; no filter applied unless ?ownerId is passed below.
+
+  // Optional explicit owner filter (staff use case)
+  if (req.user.role === 'staff' && req.query.ownerId) {
+    query.ownerId = req.query.ownerId;
   }
 
   // Status filter
@@ -64,34 +68,51 @@ export const getOrderById = async (req: AuthRequest, res: Response): Promise<voi
 
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   if (!req.user) throw new AuthError('User not authenticated');
-  if (req.user.role !== 'owner') {
-    throw new ForbiddenError('Only owners can create orders');
+  if (req.user.role !== 'owner' && req.user.role !== 'staff') {
+    throw new ForbiddenError('Only owners or staff can create orders');
   }
 
-  const { petId, services, requirements, pickupDateTime, estimatedCompletionTime, notes } =
-    req.body;
+  const {
+    petId,
+    services,
+    requirements,
+    pickupDateTime,
+    estimatedCompletionTime,
+    coatCondition,
+    notes,
+    ownerId: bodyOwnerId,
+  } = req.body;
 
   // Validate required fields
   if (!petId || !services || !pickupDateTime || !estimatedCompletionTime) {
     throw new ValidationError('petId, services, pickupDateTime, and estimatedCompletionTime are required');
   }
 
-  // Check if pet exists and belongs to owner
+  // Check if pet exists
   const pet = await Pet.findById(petId);
   if (!pet) {
     throw new NotFoundError('Pet');
   }
-  if (pet.ownerId.toString() !== req.user.id) {
-    throw new ForbiddenError('This pet does not belong to you');
+
+  // Resolve ownerId: staff can pass ownerId in body; owner uses their own id
+  let ownerId: string;
+  if (req.user.role === 'staff') {
+    ownerId = bodyOwnerId || pet.ownerId.toString();
+  } else {
+    if (pet.ownerId.toString() !== req.user.id) {
+      throw new ForbiddenError('This pet does not belong to you');
+    }
+    ownerId = req.user.id;
   }
 
   const order = new Order({
     petId,
-    ownerId: req.user.id,
+    ownerId,
     services,
     requirements: requirements || {},
     pickupDateTime: new Date(pickupDateTime),
     estimatedCompletionTime: new Date(estimatedCompletionTime),
+    coatCondition,
     notes,
   });
 
@@ -110,21 +131,44 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
 
 export const updateOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { notes, requirements } = req.body;
+  const {
+    notes,
+    requirements,
+    coatCondition,
+    pickupDateTime,
+    estimatedCompletionTime,
+    services,
+    status,
+  } = req.body;
 
   const order = await Order.findById(id);
   if (!order) {
     throw new NotFoundError('Order');
   }
 
-  // Check authorization
-  if (order.ownerId.toString() !== req.user?.id && req.user?.role !== 'staff') {
+  // Owner can only update notes/requirements/coatCondition on their own order; staff can update anything.
+  const isOwner = order.ownerId.toString() === req.user?.id;
+  const isStaff = req.user?.role === 'staff';
+  if (!isOwner && !isStaff) {
     throw new ForbiddenError('You cannot update this order');
+  }
+
+  const update: Record<string, unknown> = {};
+  if (notes !== undefined) update.notes = notes;
+  if (requirements !== undefined) update.requirements = requirements;
+  if (coatCondition !== undefined) update.coatCondition = coatCondition;
+
+  if (isStaff) {
+    if (pickupDateTime !== undefined) update.pickupDateTime = new Date(pickupDateTime);
+    if (estimatedCompletionTime !== undefined)
+      update.estimatedCompletionTime = new Date(estimatedCompletionTime);
+    if (services !== undefined) update.services = services;
+    if (status !== undefined) update.status = status;
   }
 
   const updatedOrder = await Order.findByIdAndUpdate(
     id,
-    { notes, requirements },
+    update,
     { new: true, runValidators: true }
   )
     .populate('petId')

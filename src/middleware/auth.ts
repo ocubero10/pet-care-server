@@ -42,6 +42,20 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
   }
 };
 
+export const optionalAuthenticate = (req: AuthRequest, _res: Response, next: NextFunction): void => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const payload = verifyToken(token, 'access');
+      req.user = { ...payload, id: payload.userId };
+    }
+  } catch {
+    // Silent: leave req.user unset; downstream logic decides whether auth was required.
+  }
+  next();
+};
+
 export const authorize = (...allowedRoles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {

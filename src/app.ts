@@ -11,9 +11,10 @@ dotenv.config();
 const app: Express = express();
 
 // Middleware
+const corsOrigin = process.env.CORS_ORIGIN ?? '*';
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || '*',
-  credentials: true,
+  origin: corsOrigin === '*' ? '*' : corsOrigin.split(','),
+  credentials: corsOrigin !== '*',
 }));
 
 app.use(express.json());

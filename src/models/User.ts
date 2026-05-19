@@ -9,6 +9,7 @@ export interface IUser extends Document {
   password: string;
   phone: string;
   role: UserRole;
+  cedula?: string;
   profileImage?: string;
   isActive: boolean;
   createdAt: Date;
@@ -40,12 +41,19 @@ const userSchema = new Schema<IUser>(
     phone: {
       type: String,
       required: [true, 'Phone number is required'],
-      match: [/^\d{10}$/, 'Please provide a valid phone number'],
+      match: [/^\d{8}$/, 'Phone must be 8 digits'],
     },
     role: {
       type: String,
       enum: ['owner', 'staff', 'driver'],
       required: [true, 'Role is required'],
+    },
+    cedula: {
+      type: String,
+      trim: true,
+      match: [/^\d{9,12}$/, 'Cedula or DIMEX must be 9 to 12 digits'],
+      unique: true,
+      sparse: true,
     },
     profileImage: {
       type: String,

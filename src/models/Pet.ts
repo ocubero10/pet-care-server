@@ -1,13 +1,19 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export type PetSize = 'small' | 'medium' | 'large';
+export type PetSex = 'male' | 'female';
 
 export interface IPet extends Document {
   ownerId: mongoose.Types.ObjectId;
   name: string;
   breed: string;
   age: number;
-  size: PetSize;
+  size?: PetSize;
+  sex: PetSex;
+  weight: number;
+  coatColor: string;
+  allergies?: string[];
+  vaccines?: string[];
   specialNotes?: string;
   profileImage?: string;
   isActive: boolean;
@@ -40,7 +46,30 @@ const petSchema = new Schema<IPet>(
     size: {
       type: String,
       enum: ['small', 'medium', 'large'],
-      required: [true, 'Size is required'],
+      default: 'small',
+    },
+    sex: {
+      type: String,
+      enum: ['male', 'female'],
+      required: [true, 'Sex is required'],
+    },
+    weight: {
+      type: Number,
+      required: [true, 'Weight is required'],
+      min: 0,
+    },
+    coatColor: {
+      type: String,
+      required: [true, 'Coat color is required'],
+      trim: true,
+    },
+    allergies: {
+      type: [String],
+      default: [],
+    },
+    vaccines: {
+      type: [String],
+      default: [],
     },
     specialNotes: {
       type: String,
