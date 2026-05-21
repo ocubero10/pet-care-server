@@ -57,9 +57,12 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
     }
   }
 
-  // Validate required fields
-  if (!name || !email || !password || !phone || !role) {
+  // Validate required fields (email is optional for owners/clients)
+  if (!name || !password || !phone || !role) {
     throw new ValidationError('All fields are required');
+  }
+  if (role !== 'owner' && !email) {
+    throw new ValidationError('Email is required');
   }
 
   // Owner-specific required fields
@@ -67,10 +70,12 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
     throw new ValidationError('Cedula and pet name are required for pet owners');
   }
 
-  // Check if user already exists by email
-  const existingUser = await User.findOne({ email });
-  if (existingUser) {
-    throw new ConflictError('Email already registered');
+  // Check if user already exists by email (only when email is provided)
+  if (email) {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      throw new ConflictError('Email already registered');
+    }
   }
 
   // Check cedula uniqueness for owners
@@ -84,7 +89,7 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
   // Create new user
   const user = new User({
     name,
-    email,
+    ...(email ? { email } : {}),
     password,
     phone,
     role,

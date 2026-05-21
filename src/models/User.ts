@@ -5,7 +5,7 @@ export type UserRole = 'owner' | 'staff' | 'driver';
 
 export interface IUser extends Document {
   name: string;
-  email: string;
+  email?: string;
   password: string;
   phone: string;
   role: UserRole;
@@ -27,10 +27,24 @@ const userSchema = new Schema<IUser>(
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
+      // Required only for staff/driver — clients (owners) may be created without email.
+      required: [
+        function (this: IUser) {
+          return this.role !== 'owner';
+        },
+        'Email is required',
+      ],
       unique: true,
+      sparse: true,
       lowercase: true,
-      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email'],
+      trim: true,
+      validate: {
+        validator: function (v?: string) {
+          if (!v) return true;
+          return /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(v);
+        },
+        message: 'Please provide a valid email',
+      },
     },
     password: {
       type: String,
